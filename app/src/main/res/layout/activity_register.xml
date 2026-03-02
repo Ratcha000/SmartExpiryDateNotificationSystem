@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:orientation="vertical">
+        <EditText
+            android:id="@+id/email_input"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="Email"
+            android:inputType="textEmailAddress"
+            android:layout_marginBottom="12dp" />
+        <EditText
+            android:id="@+id/password_input"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="Password"
+            android:inputType="textPassword"
+            android:layout_marginBottom="12dp" />
+        <EditText
+            android:id="@+id/name_input"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="Display Name"
+            android:layout_marginBottom="12dp" />
+        <RadioGroup
+            android:id="@+id/role_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+            <RadioButton
+                android:id="@+id/role_manager"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Manager" />
+            <RadioButton
+                android:id="@+id/role_employee"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Employee" />
+        </RadioGroup>
+        <EditText
+            android:id="@+id/restaurant_name_input"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="Restaurant Name"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+        <EditText
+            android:id="@+id/invite_code_input"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="Invite Code"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+        <Button
+            android:id="@+id/register_button"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Register" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Colors (Green for app branding) -->
+    <color name="primary_color">#2E7D32</color>
+    <color name="primary_light">#66BB6A</color>
+    <color name="primary_dark">#1B5E20</color>
+
+    <!-- Secondary Colors (Orange accent) -->
+    <color name="secondary_color">#FF8F00</color>
+    <color name="secondary_light">#FFB74D</color>
+    <color name="secondary_dark">#E65100</color>
+
+    <!-- Link Colors -->
+    <color name="blue">#1976D2</color>
+
+    <!-- Status Colors -->
+    <color name="color_safe">#4CAF50</color>
+    <color name="color_warning">#FF9800</color>
+    <color name="color_expired">#F44336</color>
+
+    <!-- Neutral Colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="gray_light">#F5F5F5</color>
+    <color name="gray_medium">#999999</color>
+    <color name="gray_dark">#333333</color>
+
+    <!-- Text Colors -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#666666</color>
+
+    <!-- Background Colors -->
+    <color name="background_default">#FFFFFF</color>
+    <color name="background_surface">#F9F9F9</color>
+</resources>
