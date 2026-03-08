@@ -17,47 +17,93 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Hint label at top -->
+    <TextView
+        android:id="@+id/scanHintText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="32dp"
+        android:background="#88000000"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:text="📷 จ่อกล้องไปที่วันหมดอายุ"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <!-- Image Preview (shown when a gallery image is loaded) -->
+    <ImageView
+        android:id="@+id/uploadedImagePreview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:visibility="gone"
+        android:background="@android:color/black" />
+
     <!-- Bottom Control Panel -->
     <LinearLayout
         android:id="@+id/controlPanel"
         android:layout_width="match_parent"
-        android:layout_height="140dp"
+        android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:background="@drawable/scan_control_panel_bg"
         android:gravity="center"
-        android:orientation="horizontal"
-        android:padding="20dp">
+        android:orientation="vertical"
+        android:padding="16dp">
 
+        <!-- Top row: Scan again + Manual entry -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnScanAgain"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:text="🔄 สแกนใหม่"
+                android:textSize="15sp"
+                android:textColor="@color/primary_color"
+                app:cornerRadius="12dp"
+                app:strokeColor="@color/primary_color"
+                app:strokeWidth="2dp"
+                style="@style/Widget.Material3.Button.OutlinedButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnManualEntry"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="✏️ กรอกเอง"
+                android:textSize="15sp"
+                android:textColor="@color/white"
+                app:cornerRadius="12dp"
+                app:backgroundTint="@color/primary_color"
+                style="@style/Widget.Material3.Button" />
+
+        </LinearLayout>
+
+        <!-- Bottom row: Upload from gallery -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnScanAgain"
-            android:layout_width="0dp"
-            android:layout_height="56dp"
-            android:layout_marginEnd="12dp"
-            android:layout_weight="1"
-            android:text="🔄 สแกนใหม่"
-            android:textSize="16sp"
+            android:id="@+id/btnUploadImage"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="📁 อัปโหลดรูปเพื่ออ่านวันหมดอายุ"
+            android:textSize="15sp"
             android:textColor="@color/primary_color"
             app:cornerRadius="12dp"
             app:strokeColor="@color/primary_color"
             app:strokeWidth="2dp"
             style="@style/Widget.Material3.Button.OutlinedButton" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnManualEntry"
-            android:layout_width="0dp"
-            android:layout_height="56dp"
-            android:layout_marginStart="12dp"
-            android:layout_weight="1"
-            android:text="✏️ กรอกเอง"
-            android:textSize="16sp"
-            android:textColor="@color/white"
-            app:cornerRadius="12dp"
-            app:backgroundTint="@color/primary_color"
-            style="@style/Widget.Material3.Button" />
-
     </LinearLayout>
 
-    <!-- Date Detection Result Popup (visible when date is detected) -->
+    <!-- Date Detection Result Popup -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/dateDetectionPopup"
         android:layout_width="match_parent"
@@ -118,5 +164,33 @@
         </LinearLayout>
 
     </com.google.android.material.card.MaterialCardView>
+
+    <!-- Processing indicator (shown while OCR runs on uploaded image) -->
+    <LinearLayout
+        android:id="@+id/processingIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:background="#CC000000"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/white" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="กำลังอ่านวันที่..."
+            android:textColor="@android:color/white"
+            android:textSize="16sp" />
+
+    </LinearLayout>
 
 </RelativeLayout>

@@ -318,8 +318,8 @@ public class DashboardFragment extends Fragment {
     }
 
     private String generateRandomCode() {
-        return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-                .substring((int) (Math.random() * 10), (int) (Math.random() * 10) + 6);
+        // Delegate to the shared utility — avoids the two-separate-random() crash risk
+        return com.example.expirytrack.repository.FirestoreRepository.generateInviteCode();
     }
 
     private long calculateDaysUntilExpiry(long expiryDate) {
