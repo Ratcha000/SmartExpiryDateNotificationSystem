@@ -53,6 +53,12 @@ public class AddIngredientDialog extends DialogFragment {
         return dialog;
     }
 
+    // Constructor สำหรับเรียกจากภายนอกโดยไม่มี parameters
+    public static AddIngredientDialog newInstance() {
+        long defaultDate = System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000L); // 7 วันข้างหน้า
+        return newInstance(defaultDate, "");
+    }
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -146,7 +152,13 @@ public class AddIngredientDialog extends DialogFragment {
         String name = editName.getText().toString().trim();
 
         if (TextUtils.isEmpty(name)) {
-            editName.setError("กรุณากรอกชื่อสินค้า");
+            editName.setError("กรุณากรอกชื่อวัตถุดิบ");
+            return;
+        }
+
+        if (TextUtils.isEmpty(restaurantId)) {
+            android.widget.Toast.makeText(requireContext(),
+                    "ข้อมูลร้านอาหารไม่ถูกต้อง", android.widget.Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -154,24 +166,46 @@ public class AddIngredientDialog extends DialogFragment {
         String category = (String) spinnerCategory.getSelectedItem();
         int notifyDays = numberPickerDays.getValue();
 
-        Ingredient ingredient = new Ingredient(name, category, selectedDate, notifyDays, restaurantId);
+        // สร้างข้อมูลวัตถุดิบ
+        Ingredient ingredient = new Ingredient();
+        ingredient.setName(name);
+        ingredient.setCategory(category);
+        ingredient.setExpiryDate(selectedDate);
+        ingredient.setNotifyDaysBefore(notifyDays);
+        ingredient.setRestaurantId(restaurantId);
+        ingredient.setStatus("active");
+        ingredient.setCreatedAt(System.currentTimeMillis());
+        ingredient.setUpdatedAt(System.currentTimeMillis());
+        ingredient.setUpdatedBy(userId);
         ingredient.setScannedBy(userId);
         ingredient.setScannedAt(System.currentTimeMillis());
-        ingredient.setUpdatedBy(userId);
 
-        // Save to Firestore
+        // แสดง loading
+        btnSave.setEnabled(false);
+        btnSave.setText("กำลังบันทึก...");
+
+        // บันทึกลง Firestore
         db.collection("ingredients").add(ingredient)
                 .addOnSuccessListener(documentReference -> {
-                    // Update the ID
+                    // อัปเดต ID ของวัตถุดิบ
                     ingredient.setId(documentReference.getId());
-                    db.collection("ingredients").document(documentReference.getId()).set(ingredient);
-                    dismiss();
+                    db.collection("ingredients").document(documentReference.getId()).set(ingredient)
+                            .addOnSuccessListener(aVoid -> {
+                                android.widget.Toast.makeText(requireContext(),
+                                        "✅ บันทึก " + name + " เรียบร้อยแล้ว",
+                                        android.widget.Toast.LENGTH_SHORT).show();
+                                dismiss();
+                            })
+                            .addOnFailureListener(e -> showSaveError(e.getMessage()));
                 })
-                .addOnFailureListener(e -> {
-                    // Show error
-                    android.widget.Toast.makeText(requireContext(),
-                            "เกิดข้อผิดพลาด: " + e.getMessage(),
-                            android.widget.Toast.LENGTH_SHORT).show();
-                });
+                .addOnFailureListener(e -> showSaveError(e.getMessage()));
+    }
+
+    private void showSaveError(String errorMessage) {
+        btnSave.setEnabled(true);
+        btnSave.setText("บันทึก");
+        android.widget.Toast.makeText(requireContext(),
+                "❌ เกิดข้อผิดพลาดในการบันทึก: " + errorMessage,
+                android.widget.Toast.LENGTH_LONG).show();
     }
 }

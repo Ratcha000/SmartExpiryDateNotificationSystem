@@ -15,7 +15,12 @@
         android:id="@+id/bottomNavigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@color/white"
         android:layout_alignParentBottom="true"
-        app:menu="@menu/menu_employee_bottom_nav" />
+        app:menu="@menu/menu_employee_bottom_nav"
+        app:labelVisibilityMode="labeled"
+        app:itemIconTint="@color/bottom_nav_color"
+        app:itemTextColor="@color/bottom_nav_color"
+        app:elevation="8dp" />
 
 </LinearLayout>

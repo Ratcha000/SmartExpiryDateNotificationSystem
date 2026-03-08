@@ -1,6 +1,8 @@
 package com.example.expirytrack.fragment;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -41,6 +43,7 @@ import java.util.concurrent.ExecutionException;
  * Fragment for scanning expiry dates using CameraX and ML Kit
  */
 public class ScanFragment extends Fragment {
+    private static final int REQUEST_CAMERA_PERMISSION = 200;
     private PreviewView previewView;
     private CameraOverlayView overlayView;
     private LinearLayout dateDetectionPopup;
@@ -71,49 +74,134 @@ public class ScanFragment extends Fragment {
         db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
 
-        fetchRestaurantIdAndStartCamera();
         setupTextRecognizer();
         setupButtonListeners();
+
+        // ตรวจสอบ permission ก่อนเริ่ม camera
+        checkCameraPermission();
     }
 
     private void initializeViews(View view) {
-        previewView = view.findViewById(R.id.previewView);
-        overlayView = view.findViewById(R.id.overlayView);
-        dateDetectionPopup = view.findViewById(R.id.dateDetectionPopup);
-        detectedDateText = view.findViewById(R.id.detectedDateText);
-        btnUseDetectedDate = view.findViewById(R.id.btnUseDetectedDate);
-        btnScanAgain = view.findViewById(R.id.btnScanAgain);
-        btnManualEntry = view.findViewById(R.id.btnManualEntry);
+        try {
+            previewView = view.findViewById(R.id.previewView);
+            overlayView = view.findViewById(R.id.overlayView);
+            dateDetectionPopup = view.findViewById(R.id.dateDetectionPopup);
+            detectedDateText = view.findViewById(R.id.detectedDateText);
+            btnUseDetectedDate = view.findViewById(R.id.btnUseDetectedDate);
+            btnScanAgain = view.findViewById(R.id.btnScanAgain);
+            btnManualEntry = view.findViewById(R.id.btnManualEntry);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(getContext(), "เกิดข้อผิดพลาดในการเริ่มต้นหน้าสแกน: " + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private void setupButtonListeners() {
-        btnUseDetectedDate.setOnClickListener(v -> openAddIngredientDialog(lastDetectedDate));
-        btnScanAgain.setOnClickListener(v -> hideDateDetectionPopup());
-        btnManualEntry.setOnClickListener(v -> openAddIngredientDialog(System.currentTimeMillis()));
+        if (btnUseDetectedDate != null) {
+            btnUseDetectedDate.setOnClickListener(v -> {
+                if (lastDetectedDate != -1) {
+                    hideDateDetectionPopup();
+                    openAddIngredientDialog(lastDetectedDate);
+                }
+            });
+        }
+
+        if (btnScanAgain != null) {
+            btnScanAgain.setOnClickListener(v -> {
+                hideDateDetectionPopup();
+                // เริ่ม scanning ใหม่
+                if (camera != null) {
+                    Toast.makeText(getContext(), "กำลังสแกนหาวันหมดอายุ...", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        if (btnManualEntry != null) {
+            btnManualEntry.setOnClickListener(v -> {
+                hideDateDetectionPopup();
+                // เปิด dialog โดยไม่มีวันหมดอายุ
+                long defaultDate = System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000L); // 7 วันข้างหน้า
+                openAddIngredientDialog(defaultDate);
+            });
+        }
+    }
+
+    private void checkCameraPermission() {
+        if (ContextCompat.checkSelfPermission(requireContext(),
+                Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            fetchRestaurantIdAndStartCamera();
+        } else {
+            requestPermissions(new String[] { Manifest.permission.CAMERA }, REQUEST_CAMERA_PERMISSION);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CAMERA_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                fetchRestaurantIdAndStartCamera();
+            } else {
+                Toast.makeText(getContext(), "กรุณาอนุญาตให้เข้าถึงกล้องเพื่อใช้งานสแกน", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     private void fetchRestaurantIdAndStartCamera() {
-        String userId = auth.getCurrentUser() != null ? auth.getCurrentUser().getUid() : "";
-        if (userId.isEmpty()) {
-            return;
-        }
-
-        db.collection("users").document(userId).get().addOnSuccessListener(documentSnapshot -> {
-            if (documentSnapshot.exists()) {
-                com.example.expirytrack.model.User user = documentSnapshot
-                        .toObject(com.example.expirytrack.model.User.class);
-                if (user != null && user.getRestaurantId() != null) {
-                    restaurantId = user.getRestaurantId();
-                    startCamera();
-                }
+        try {
+            String userId = auth.getCurrentUser() != null ? auth.getCurrentUser().getUid() : "";
+            if (userId.isEmpty()) {
+                Toast.makeText(getContext(), "กรุณาเข้าสู่ระบบก่อนใช้งานสแกน", Toast.LENGTH_LONG).show();
+                return;
             }
-        });
+
+            db.collection("users").document(userId).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        try {
+                            if (documentSnapshot.exists()) {
+                                com.example.expirytrack.model.User user = documentSnapshot
+                                        .toObject(com.example.expirytrack.model.User.class);
+                                if (user != null && user.getRestaurantId() != null) {
+                                    restaurantId = user.getRestaurantId();
+                                    startCamera();
+                                } else {
+                                    Toast.makeText(getContext(), "ไม่พบข้อมูลร้านอาหาร กรุณาติดต่อผู้ดูแลระบบ",
+                                            Toast.LENGTH_LONG).show();
+                                }
+                            } else {
+                                Toast.makeText(getContext(), "ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่",
+                                        Toast.LENGTH_LONG).show();
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            Toast.makeText(getContext(), "เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ใช้: " + e.getMessage(),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        e.printStackTrace();
+                        Toast.makeText(getContext(), "ไม่สามารถเชื่อมต่อฐานข้อมูลได้: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    });
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(getContext(), "เกิดข้อผิดพลาดในการเริ่มต้นการสแกน: " + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private void setupTextRecognizer() {
-        // Initialize ML Kit Text Recognizer with Latin script options
-        TextRecognizerOptions options = new TextRecognizerOptions.Builder().build();
-        textRecognizer = TextRecognition.getClient(options);
+        try {
+            // Initialize ML Kit Text Recognizer with Latin script options
+            TextRecognizerOptions options = new TextRecognizerOptions.Builder().build();
+            textRecognizer = TextRecognition.getClient(options);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(getContext(), "ไม่สามารถเริ่มต้น Text Recognizer ได้: " + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private void startCamera() {
@@ -202,8 +290,11 @@ public class ScanFragment extends Fragment {
 
     private void showDateDetectionPopup(DatePatternDetector.DateResult result) {
         lastDetectedDate = result.timestamp;
-        detectedDateText.setText(result.displayText);
+        detectedDateText.setText("พบวันหมดอายุ: " + result.displayText);
         dateDetectionPopup.setVisibility(View.VISIBLE);
+
+        // แสดง feedback ให้ผู้ใช้ทราบ
+        Toast.makeText(getContext(), "✅ พบวันหมดอายุ: " + result.displayText, Toast.LENGTH_SHORT).show();
     }
 
     private void hideDateDetectionPopup() {

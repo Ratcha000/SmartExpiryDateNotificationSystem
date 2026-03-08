@@ -13,8 +13,11 @@ import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
 import com.example.expirytrack.R;
-import com.example.expirytrack.fragment.IngredientListFragment;
+import com.example.expirytrack.activity.SettingsActivity;
+import com.example.expirytrack.fragment.HomeFragment;
+import com.example.expirytrack.fragment.ProfileFragment;
 import com.example.expirytrack.fragment.ScanFragment;
+import com.example.expirytrack.fragment.SuggestionsFragment;
 import com.example.expirytrack.util.NotificationHelper;
 import com.example.expirytrack.worker.ExpiryCheckWorker;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -24,21 +27,18 @@ import com.google.firebase.firestore.FirebaseFirestoreSettings;
 import java.util.concurrent.TimeUnit;
 
 public class EmployeeMainActivity extends AppCompatActivity {
-    private BottomNavigationView bottomNav;
-    private FragmentManager fragmentManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_employee_main);
 
-        bottomNav = findViewById(R.id.bottomNavigation);
-        fragmentManager = getSupportFragmentManager();
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNavigation);
+        FragmentManager fragmentManager = getSupportFragmentManager();
 
         // Enable offline persistence
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
-                .setPersistenceEnabled(true)
                 .build();
         db.setFirestoreSettings(settings);
 
@@ -49,21 +49,26 @@ public class EmployeeMainActivity extends AppCompatActivity {
         scheduleExpiryCheck();
 
         if (savedInstanceState == null) {
-            loadFragment(new IngredientListFragment());
+            loadFragment(new HomeFragment(), fragmentManager);
         }
 
         bottomNav.setOnItemSelectedListener(item -> {
             Fragment fragment = null;
-            if (item.getItemId() == R.id.nav_ingredients) {
-                fragment = new IngredientListFragment();
+            if (item.getItemId() == R.id.nav_home) {
+                fragment = new HomeFragment();
             } else if (item.getItemId() == R.id.nav_scan) {
                 fragment = new ScanFragment();
+            } else if (item.getItemId() == R.id.nav_suggestions) {
+                fragment = new SuggestionsFragment();
+            } else if (item.getItemId() == R.id.nav_profile) {
+                fragment = new ProfileFragment();
             }
             if (fragment != null) {
-                loadFragment(fragment);
+                loadFragment(fragment, fragmentManager);
             }
             return true;
         });
+
     }
 
     @Override
@@ -81,7 +86,7 @@ public class EmployeeMainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private void loadFragment(Fragment fragment) {
+    private void loadFragment(Fragment fragment, FragmentManager fragmentManager) {
         FragmentTransaction transaction = fragmentManager.beginTransaction();
         transaction.replace(R.id.fragmentContainer, fragment);
         transaction.addToBackStack(null);

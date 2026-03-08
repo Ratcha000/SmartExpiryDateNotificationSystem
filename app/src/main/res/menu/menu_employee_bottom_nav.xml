@@ -1,12 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/nav_ingredients"
-        android:icon="@android:drawable/ic_menu_info_details"
-        android:title="รายการวัตถุดิบ" />
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_home"
+        android:title="หน้าแรก" />
 
     <item
         android:id="@+id/nav_scan"
-        android:icon="@android:drawable/ic_menu_camera"
+        android:icon="@drawable/ic_scan"
         android:title="สแกน" />
+
+    <item
+        android:id="@+id/nav_suggestions"
+        android:icon="@drawable/ic_suggestions"
+        android:title="แนะนำ" />
+
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@drawable/ic_profile"
+        android:title="โปรไฟล์" />
 </menu>
