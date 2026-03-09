@@ -9,20 +9,28 @@ import java.util.regex.Pattern;
  */
 public class DatePatternDetector {
 
-    // Pattern: DD/MM/YYYY or DD/MM/YY
+    // Pattern: DD/MM/YYYY or DD/MM/YY 
     private static final String PATTERN_SLASH = "(\\d{1,2})/(\\d{1,2})/(\\d{2,4})";
 
-    // Pattern: DD-MM-YYYY
+    // Pattern: DD-MM-YYYY or DD-MM-YY
     private static final String PATTERN_DASH = "(\\d{1,2})-(\\d{1,2})-(\\d{2,4})";
 
-    // Pattern: MM/YYYY (e.g., 03/2025)
+    // Pattern: MM/YYYY only (4-digit year, 2-digit month) — checked AFTER 3-part slash
     private static final String PATTERN_MONTH_YEAR = "(\\d{1,2})/(\\d{4})";
 
-    // Pattern: YYYY-MM-DD
+    // Pattern: YYYY-MM-DD (ISO)
     private static final String PATTERN_ISO = "(\\d{4})-(\\d{1,2})-(\\d{1,2})";
 
+    // Pattern: DD MM YYYY (space-separated, common on Thai packaging)
+    private static final String PATTERN_SPACE = "(\\d{1,2})\\s+(\\d{1,2})\\s+(\\d{4})";
+
     // Keywords before date
-    private static final String DATE_KEYWORDS = "(EXP|BBF|หมดอายุ|Exp|Bbf|exp|bbf)\\s*:?\\s*";
+    private static final String DATE_KEYWORDS =
+            "(EXP|BBF|BEST|USE BY|หมดอายุ|วันหมดอายุ|Exp|Bbf|Best|exp|bbf|best)\\s*[:/.]?\\s*";
+
+    // Minimum plausible expiry year
+    private static final int MIN_YEAR = 2020;
+    private static final int MAX_YEAR = 2050;
 
     public static class DateResult {
         public boolean found;
@@ -54,29 +62,25 @@ public class DatePatternDetector {
             return result;
         }
 
-        // Try pattern: DD/MM/YYYY or DD/MM/YY
+        // 1. Try DD/MM/YYYY (3-part slash — most common on Thai packaging)
         result = findPatternSlash(cleanText);
-        if (result.found) {
-            return result;
-        }
+        if (result.found) return result;
 
-        // Try pattern: DD-MM-YYYY
+        // 2. Try DD-MM-YYYY (dash separator)
         result = findPatternDash(cleanText);
-        if (result.found) {
-            return result;
-        }
+        if (result.found) return result;
 
-        // Try pattern: YYYY-MM-DD
+        // 3. Try YYYY-MM-DD (ISO)
         result = findPatternISO(cleanText);
-        if (result.found) {
-            return result;
-        }
+        if (result.found) return result;
 
-        // Try pattern: MM/YYYY
+        // 4. Try DD MM YYYY (space-separated)
+        result = findPatternSpace(cleanText);
+        if (result.found) return result;
+
+        // 5. Try MM/YYYY (last — fewest digits, highest false-positive risk)
         result = findPatternMonthYear(cleanText);
-        if (result.found) {
-            return result;
-        }
+        if (result.found) return result;
 
         return new DateResult(false, 0, "", -1, -1);
     }
@@ -114,10 +118,13 @@ public class DatePatternDetector {
                 int month = Integer.parseInt(m.group(2));
                 int year = Integer.parseInt(m.group(3));
 
-                // Handle 2-digit year
+                // Handle 2-digit year: 00-29 → 2000-2029, 30-99 → 1930-1999
                 if (year < 100) {
-                    year += (year < 30) ? 2000 : 2000;
+                    year += (year < 30) ? 2000 : 1900;
                 }
+
+                // Reject implausible years for expiry dates
+                if (year < MIN_YEAR || year > MAX_YEAR) continue;
 
                 // Validate date
                 if (!isValidDate(day, month, year)) {
@@ -146,10 +153,13 @@ public class DatePatternDetector {
                 int month = Integer.parseInt(m.group(2));
                 int year = Integer.parseInt(m.group(3));
 
-                // Handle 2-digit year
+                // Handle 2-digit year: 00-29 → 2000-2029, 30-99 → 1930-1999
                 if (year < 100) {
-                    year += (year < 30) ? 2000 : 2000;
+                    year += (year < 30) ? 2000 : 1900;
                 }
+
+                // Reject implausible years
+                if (year < MIN_YEAR || year > MAX_YEAR) continue;
 
                 if (!isValidDate(day, month, year)) {
                     continue;
@@ -193,6 +203,25 @@ public class DatePatternDetector {
         return new DateResult(false, 0, "", -1, -1);
     }
 
+    /** Space-separated: DD MM YYYY (e.g. "15 03 2025") */
+    private static DateResult findPatternSpace(String text) {
+        Pattern p = Pattern.compile(PATTERN_SPACE);
+        Matcher m = p.matcher(text);
+        while (m.find()) {
+            try {
+                int day   = Integer.parseInt(m.group(1));
+                int month = Integer.parseInt(m.group(2));
+                int year  = Integer.parseInt(m.group(3));
+                if (year < MIN_YEAR || year > MAX_YEAR) continue;
+                if (!isValidDate(day, month, year)) continue;
+                long timestamp = dateToTimestamp(day, month, year);
+                String display = String.format("%02d/%02d/%04d", day, month, year);
+                return new DateResult(true, timestamp, display, m.start(), m.end());
+            } catch (Exception ignored) {}
+        }
+        return new DateResult(false, 0, "", -1, -1);
+    }
+
     private static DateResult findPatternMonthYear(String text) {
         Pattern p = Pattern.compile(PATTERN_MONTH_YEAR);
         Matcher m = p.matcher(text);
@@ -200,22 +229,17 @@ public class DatePatternDetector {
         while (m.find()) {
             try {
                 int month = Integer.parseInt(m.group(1));
-                int year = Integer.parseInt(m.group(2));
+                int year  = Integer.parseInt(m.group(2));
 
-                if (month < 1 || month > 12) {
-                    continue;
-                }
+                if (month < 1 || month > 12) continue;
+                if (year < MIN_YEAR || year > MAX_YEAR) continue;
 
-                // Set day to last day of month
+                // Set day to last day of month (expiry = end of that month)
                 int day = getLastDayOfMonth(month, year);
-
                 long timestamp = dateToTimestamp(day, month, year);
                 String displayText = String.format("%02d/%02d/%04d", day, month, year);
-
                 return new DateResult(true, timestamp, displayText, m.start(), m.end());
-            } catch (Exception e) {
-                // Continue searching
-            }
+            } catch (Exception ignored) {}
         }
 
         return new DateResult(false, 0, "", -1, -1);

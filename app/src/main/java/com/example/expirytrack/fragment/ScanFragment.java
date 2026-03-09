@@ -47,9 +47,9 @@ import java.util.concurrent.ExecutionException;
  * ScanFragment — OCR camera scanner + gallery image upload.
  *
  * Two modes:
- *   1. LIVE MODE  — CameraX real-time preview analyses frames continuously.
- *   2. UPLOAD MODE — User picks an image from gallery; still image is run through
- *                    the same ML Kit text recogniser.
+ * 1. LIVE MODE — CameraX real-time preview analyses frames continuously.
+ * 2. UPLOAD MODE — User picks an image from gallery; still image is run through
+ * the same ML Kit text recogniser.
  */
 public class ScanFragment extends Fragment {
 
@@ -59,7 +59,7 @@ public class ScanFragment extends Fragment {
     private PreviewView previewView;
     private ImageView uploadedImagePreview;
     private CameraOverlayView overlayView;
-    private View dateDetectionPopup;       // MaterialCardView in XML — use View to avoid cast
+    private View dateDetectionPopup; // MaterialCardView in XML — use View to avoid cast
     private LinearLayout processingIndicator;
     private TextView detectedDateText;
     private Button btnUseDetectedDate;
@@ -80,14 +80,13 @@ public class ScanFragment extends Fragment {
     private long lastDetectedDate = -1;
 
     // ── Gallery picker launcher ──
-    private final ActivityResultLauncher<String> galleryLauncher =
-            registerForActivityResult(
-                    new ActivityResultContracts.GetContent(),
-                    uri -> {
-                        if (uri != null) {
-                            processGalleryImage(uri);
-                        }
-                    });
+    private final ActivityResultLauncher<String> galleryLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri != null) {
+                    processGalleryImage(uri);
+                }
+            });
 
     // ────────────────────────────── LIFECYCLE ──────────────────────────────────
 
@@ -103,7 +102,7 @@ public class ScanFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         initializeViews(view);
-        db   = FirebaseFirestore.getInstance();
+        db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
 
         setupTextRecognizer();
@@ -115,22 +114,23 @@ public class ScanFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         closeTextRecognizer();
-        if (cameraProvider != null) cameraProvider.unbindAll();
+        if (cameraProvider != null)
+            cameraProvider.unbindAll();
     }
 
     // ────────────────────────────── INIT ──────────────────────────────────────
 
     private void initializeViews(View view) {
-        previewView          = view.findViewById(R.id.previewView);
+        previewView = view.findViewById(R.id.previewView);
         uploadedImagePreview = view.findViewById(R.id.uploadedImagePreview);
-        overlayView          = view.findViewById(R.id.overlayView);
-        dateDetectionPopup   = view.findViewById(R.id.dateDetectionPopup);
-        processingIndicator  = view.findViewById(R.id.processingIndicator);
-        detectedDateText     = view.findViewById(R.id.detectedDateText);
-        btnUseDetectedDate   = view.findViewById(R.id.btnUseDetectedDate);
-        btnScanAgain         = view.findViewById(R.id.btnScanAgain);
-        btnManualEntry       = view.findViewById(R.id.btnManualEntry);
-        btnUploadImage       = view.findViewById(R.id.btnUploadImage);
+        overlayView = view.findViewById(R.id.overlayView);
+        dateDetectionPopup = view.findViewById(R.id.dateDetectionPopup);
+        processingIndicator = view.findViewById(R.id.processingIndicator);
+        detectedDateText = view.findViewById(R.id.detectedDateText);
+        btnUseDetectedDate = view.findViewById(R.id.btnUseDetectedDate);
+        btnScanAgain = view.findViewById(R.id.btnScanAgain);
+        btnManualEntry = view.findViewById(R.id.btnManualEntry);
+        btnUploadImage = view.findViewById(R.id.btnUploadImage);
     }
 
     private void setupTextRecognizer() {
@@ -143,8 +143,11 @@ public class ScanFragment extends Fragment {
         if (btnUseDetectedDate != null) {
             btnUseDetectedDate.setOnClickListener(v -> {
                 if (lastDetectedDate != -1) {
+                    // ⚠️ Capture BEFORE calling hideDateDetectionPopup(),
+                    // which resets lastDetectedDate to -1
+                    long dateToUse = lastDetectedDate;
                     hideDateDetectionPopup();
-                    openAddIngredientDialog(lastDetectedDate);
+                    openAddIngredientDialog(dateToUse);
                 }
             });
         }
@@ -182,15 +185,18 @@ public class ScanFragment extends Fragment {
      */
     private void processGalleryImage(Uri uri) {
         // Switch to image-preview mode: hide live preview, show still image
-        if (previewView != null)          previewView.setVisibility(View.GONE);
-        if (overlayView  != null)         overlayView.setVisibility(View.GONE);
+        if (previewView != null)
+            previewView.setVisibility(View.GONE);
+        if (overlayView != null)
+            overlayView.setVisibility(View.GONE);
         if (uploadedImagePreview != null) {
             uploadedImagePreview.setImageURI(uri);
             uploadedImagePreview.setVisibility(View.VISIBLE);
         }
 
         // Stop live camera to save resources
-        if (cameraProvider != null) cameraProvider.unbindAll();
+        if (cameraProvider != null)
+            cameraProvider.unbindAll();
 
         // Show processing spinner
         showProcessing(true);
@@ -224,21 +230,24 @@ public class ScanFragment extends Fragment {
             uploadedImagePreview.setVisibility(View.GONE);
             uploadedImagePreview.setImageURI(null);
         }
-        if (previewView != null) previewView.setVisibility(View.VISIBLE);
-        if (overlayView  != null) overlayView.setVisibility(View.VISIBLE);
+        if (previewView != null)
+            previewView.setVisibility(View.VISIBLE);
+        if (overlayView != null)
+            overlayView.setVisibility(View.VISIBLE);
 
         // Restart camera
-        if (restaurantId != null) startCamera();
+        if (restaurantId != null)
+            startCamera();
     }
 
     // ────────────────────────────── CAMERA PERMISSION ─────────────────────────
 
     private void checkCameraPermission() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
-                == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(requireContext(),
+                Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             fetchRestaurantIdAndStartCamera();
         } else {
-            requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
+            requestPermissions(new String[] { Manifest.permission.CAMERA }, REQUEST_CAMERA_PERMISSION);
         }
     }
 
@@ -268,8 +277,8 @@ public class ScanFragment extends Fragment {
         db.collection("users").document(userId).get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
-                        com.example.expirytrack.model.User user =
-                                doc.toObject(com.example.expirytrack.model.User.class);
+                        com.example.expirytrack.model.User user = doc
+                                .toObject(com.example.expirytrack.model.User.class);
                         if (user != null && user.getRestaurantId() != null) {
                             restaurantId = user.getRestaurantId();
                             startCamera();
@@ -278,13 +287,12 @@ public class ScanFragment extends Fragment {
                         }
                     }
                 })
-                .addOnFailureListener(e ->
-                        Toast.makeText(getContext(), "ไม่สามารถเชื่อมต่อฐานข้อมูลได้", Toast.LENGTH_LONG).show());
+                .addOnFailureListener(
+                        e -> Toast.makeText(getContext(), "ไม่สามารถเชื่อมต่อฐานข้อมูลได้", Toast.LENGTH_LONG).show());
     }
 
     private void startCamera() {
-        ListenableFuture<ProcessCameraProvider> future =
-                ProcessCameraProvider.getInstance(requireContext());
+        ListenableFuture<ProcessCameraProvider> future = ProcessCameraProvider.getInstance(requireContext());
 
         future.addListener(() -> {
             try {
@@ -324,7 +332,10 @@ public class ScanFragment extends Fragment {
     @androidx.annotation.OptIn(markerClass = androidx.camera.core.ExperimentalGetImage.class)
     private void analyzeImage(androidx.camera.core.ImageProxy image) {
         android.media.Image mediaImage = image.getImage();
-        if (mediaImage == null) { image.close(); return; }
+        if (mediaImage == null) {
+            image.close();
+            return;
+        }
 
         InputImage inputImage = InputImage.fromMediaImage(
                 mediaImage, image.getImageInfo().getRotationDegrees());
@@ -393,9 +404,43 @@ public class ScanFragment extends Fragment {
         lastDetectedDate = -1;
     }
 
+    /**
+     * Opens AddIngredientDialog with the given expiry date.
+     * If restaurantId is not yet loaded (async race), fetches it fresh before
+     * opening.
+     */
     private void openAddIngredientDialog(long expiryDate) {
-        AddIngredientDialog dialog = AddIngredientDialog.newInstance(expiryDate, restaurantId);
-        dialog.show(getChildFragmentManager(), "AddIngredient");
+        if (restaurantId != null && !restaurantId.isEmpty()) {
+            // restaurantId already available — open immediately
+            AddIngredientDialog dialog = AddIngredientDialog.newInstance(expiryDate, restaurantId);
+            dialog.show(getChildFragmentManager(), "AddIngredient");
+        } else {
+            // restaurantId not yet available — fetch from Firestore first
+            String userId = auth.getCurrentUser() != null ? auth.getCurrentUser().getUid() : "";
+            if (userId.isEmpty()) {
+                Toast.makeText(getContext(), "กรุณาเข้าสู่ระบบก่อน", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            db.collection("users").document(userId).get()
+                    .addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            com.example.expirytrack.model.User user = doc
+                                    .toObject(com.example.expirytrack.model.User.class);
+                            if (user != null && user.getRestaurantId() != null
+                                    && !user.getRestaurantId().isEmpty()) {
+                                restaurantId = user.getRestaurantId();
+                                AddIngredientDialog dialog = AddIngredientDialog.newInstance(expiryDate, restaurantId);
+                                dialog.show(getChildFragmentManager(), "AddIngredient");
+                            } else {
+                                Toast.makeText(getContext(),
+                                        "ไม่พบข้อมูลร้านอาหาร กรุณาลองใหม่",
+                                        Toast.LENGTH_LONG).show();
+                            }
+                        }
+                    })
+                    .addOnFailureListener(e -> Toast.makeText(getContext(),
+                            "เชื่อมต่อฐานข้อมูลไม่สำเร็จ", Toast.LENGTH_SHORT).show());
+        }
     }
 
     // ────────────────────────────── HELPERS ───────────────────────────────────
@@ -407,7 +452,10 @@ public class ScanFragment extends Fragment {
 
     private void closeTextRecognizer() {
         if (textRecognizer != null) {
-            try { textRecognizer.close(); } catch (Exception ignored) {}
+            try {
+                textRecognizer.close();
+            } catch (Exception ignored) {
+            }
         }
     }
 }
