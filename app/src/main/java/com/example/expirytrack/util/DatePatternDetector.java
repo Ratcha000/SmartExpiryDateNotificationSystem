@@ -5,205 +5,240 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Utility class to detect date patterns from OCR text
+ * Utility class to detect date patterns from OCR text.
+ *
+ * Supported formats (in priority order):
+ *   Keyword + DD/MM/YYYY|YY      e.g. EXP 15/12/26, BEST BEFORE 20/03/2015
+ *   Keyword + DD-MM-YYYY|YY      e.g. EXP 15-12-2027
+ *   Keyword + COMPACT-6          e.g. EXP:040917, BBF:060826, EXP 200625
+ *                                  → tries DDMMYY, YYMMDD, MMDDYY in order
+ *   DD/MM/YYYY|YY                (no keyword)
+ *   DD-MM-YYYY|YY                (no keyword)
+ *   YYYY-MM-DD  ISO              e.g. 2027-03-15
+ *   DD MM YYYY  space-separated  e.g. 15 03 2027
+ *   MM/YYYY                      e.g. 03/2027
  */
 public class DatePatternDetector {
 
-    // Pattern: DD/MM/YYYY or DD/MM/YY 
-    private static final String PATTERN_SLASH = "(\\d{1,2})/(\\d{1,2})/(\\d{2,4})";
-
-    // Pattern: DD-MM-YYYY or DD-MM-YY
-    private static final String PATTERN_DASH = "(\\d{1,2})-(\\d{1,2})-(\\d{2,4})";
-
-    // Pattern: MM/YYYY only (4-digit year, 2-digit month) — checked AFTER 3-part slash
+    // ── Separator-based patterns ──────────────────────────────────────────
+    private static final String PATTERN_SLASH      = "(\\d{1,2})/(\\d{1,2})/(\\d{2,4})";
+    private static final String PATTERN_DASH       = "(\\d{1,2})-(\\d{1,2})-(\\d{2,4})";
     private static final String PATTERN_MONTH_YEAR = "(\\d{1,2})/(\\d{4})";
+    private static final String PATTERN_ISO        = "(\\d{4})-(\\d{1,2})-(\\d{1,2})";
+    private static final String PATTERN_SPACE      = "(\\d{1,2})\\s+(\\d{1,2})\\s+(\\d{4})";
 
-    // Pattern: YYYY-MM-DD (ISO)
-    private static final String PATTERN_ISO = "(\\d{4})-(\\d{1,2})-(\\d{1,2})";
+    // ── Compact 6-digit pattern (must follow a keyword to reduce false positives) ──
+    // Captures exactly 6 consecutive digits, NOT followed by more digits
+    private static final String PATTERN_COMPACT_6  = "(\\d{6})(?!\\d)";
 
-    // Pattern: DD MM YYYY (space-separated, common on Thai packaging)
-    private static final String PATTERN_SPACE = "(\\d{1,2})\\s+(\\d{1,2})\\s+(\\d{4})";
-
-    // Keywords before date
+    // ── Keywords ──────────────────────────────────────────────────────────
+    // FIX (Ex2): "BEST BEFORE" has a space — use \\s* between words so it
+    // matches "BEST BEFORE", "BESTBEFORE", "Best Before", etc.
+    // Separator after keyword: optional space/colon/dot/slash
     private static final String DATE_KEYWORDS =
-            "(EXP|BBF|BEST|USE BY|หมดอายุ|วันหมดอายุ|Exp|Bbf|Best|exp|bbf|best)\\s*[:/.]?\\s*";
+            "(EXP|BBF|BEST\\s*BEFORE|BEST|USE\\s*BY|หมดอายุ|วันหมดอายุ)" +
+                    "\\s*[:/.]?\\s*";
 
-    // Minimum plausible expiry year
-    private static final int MIN_YEAR = 2020;
+    private static final int MIN_YEAR = 2015;   // widened slightly for older products
     private static final int MAX_YEAR = 2050;
+
+    // ── Public result type ────────────────────────────────────────────────
 
     public static class DateResult {
         public boolean found;
-        public long timestamp; // in milliseconds
-        public String displayText;
-        public int startIndex;
-        public int endIndex;
+        public long    timestamp;   // milliseconds
+        public String  displayText;
+        public int     startIndex;
+        public int     endIndex;
 
-        public DateResult(boolean found, long timestamp, String displayText, int startIndex, int endIndex) {
-            this.found = found;
-            this.timestamp = timestamp;
+        public DateResult(boolean found, long timestamp, String displayText,
+                          int startIndex, int endIndex) {
+            this.found       = found;
+            this.timestamp   = timestamp;
             this.displayText = displayText;
-            this.startIndex = startIndex;
-            this.endIndex = endIndex;
+            this.startIndex  = startIndex;
+            this.endIndex    = endIndex;
         }
     }
+
+    // ── Entry point ───────────────────────────────────────────────────────
 
     public static DateResult detectDate(String text) {
         if (text == null || text.isEmpty()) {
             return new DateResult(false, 0, "", -1, -1);
         }
+        String clean = text.replaceAll("\\s+", " ").trim();
 
-        // Remove extra spaces and clean text
-        String cleanText = text.replaceAll("\\s+", " ").trim();
+        DateResult r;
 
-        // Try to find dates with keywords
-        DateResult result = findDateWithKeyword(cleanText);
-        if (result.found) {
-            return result;
-        }
+        // 1. Keyword + slash  (e.g. BEST BEFORE 20/03/2015, EXP 15/12/26)
+        r = findKeyword(clean, PATTERN_SLASH, false);
+        if (r.found) return r;
 
-        // 1. Try DD/MM/YYYY (3-part slash — most common on Thai packaging)
-        result = findPatternSlash(cleanText);
-        if (result.found) return result;
+        // 2. Keyword + dash
+        r = findKeyword(clean, PATTERN_DASH, false);
+        if (r.found) return r;
 
-        // 2. Try DD-MM-YYYY (dash separator)
-        result = findPatternDash(cleanText);
-        if (result.found) return result;
+        // 3. Keyword + compact-6  (e.g. EXP:040917, EXP 200625, BBF:060826)
+        r = findKeywordCompact6(clean);
+        if (r.found) return r;
 
-        // 3. Try YYYY-MM-DD (ISO)
-        result = findPatternISO(cleanText);
-        if (result.found) return result;
+        // 4. DD/MM/YYYY without keyword
+        r = findPatternSlash(clean);
+        if (r.found) return r;
 
-        // 4. Try DD MM YYYY (space-separated)
-        result = findPatternSpace(cleanText);
-        if (result.found) return result;
+        // 5. DD-MM-YYYY without keyword
+        r = findPatternDash(clean);
+        if (r.found) return r;
 
-        // 5. Try MM/YYYY (last — fewest digits, highest false-positive risk)
-        result = findPatternMonthYear(cleanText);
-        if (result.found) return result;
+        // 6. YYYY-MM-DD ISO
+        r = findPatternISO(clean);
+        if (r.found) return r;
+
+        // 7. DD MM YYYY space-separated
+        r = findPatternSpace(clean);
+        if (r.found) return r;
+
+        // 8. MM/YYYY (highest false-positive risk — always last)
+        r = findPatternMonthYear(clean);
+        if (r.found) return r;
 
         return new DateResult(false, 0, "", -1, -1);
     }
 
-    private static DateResult findDateWithKeyword(String text) {
-        String pattern = DATE_KEYWORDS + PATTERN_SLASH;
-        Pattern p = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
-        Matcher m = p.matcher(text);
+    // ── Keyword + pattern helpers ─────────────────────────────────────────
 
+    /**
+     * Generic: keyword followed by a separator-based pattern.
+     * Group numbering: group(1)=keyword, group(2..4)=date parts.
+     * @param isoOrder if true, groups are YYYY/MM/DD; otherwise DD/MM/YYYY
+     */
+    private static DateResult findKeyword(String text, String datePat, boolean isoOrder) {
+        Pattern p = Pattern.compile(DATE_KEYWORDS + datePat, Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(text);
         while (m.find()) {
             try {
-                int day = Integer.parseInt(m.group(2));
-                int month = Integer.parseInt(m.group(3));
-                int year = Integer.parseInt(m.group(4));
+                int a = Integer.parseInt(m.group(2));
+                int b = Integer.parseInt(m.group(3));
+                int c = Integer.parseInt(m.group(4));
 
-                long timestamp = dateToTimestamp(day, month, year);
-                String displayText = String.format("%02d/%02d/%04d", day, month, year);
+                int day, month, year;
+                if (isoOrder) { year = a; month = b; day = c; }
+                else          { day = a; month = b; year = c; }
 
-                return new DateResult(true, timestamp, displayText, m.start(), m.end());
-            } catch (Exception e) {
-                // Continue searching
-            }
+                if (year < 100) year += (year < 30) ? 2000 : 1900;
+                if (year < MIN_YEAR || year > MAX_YEAR) continue;
+                if (!isValidDate(day, month, year)) continue;
+
+                return make(true, day, month, year, m.start(), m.end());
+            } catch (Exception ignored) {}
         }
-
-        return new DateResult(false, 0, "", -1, -1);
+        return notFound();
     }
+
+    /**
+     * Keyword followed by exactly 6 digits (no separator).
+     * Tries three interpretations in order:
+     *   1. DDMMYY  (most common on Thai packaging)
+     *   2. YYMMDD  (used by some Thai dairies)
+     *   3. MMDDYY  (some imported products)
+     */
+    private static DateResult findKeywordCompact6(String text) {
+        Pattern p = Pattern.compile(DATE_KEYWORDS + PATTERN_COMPACT_6,
+                Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(text);
+        while (m.find()) {
+            String digits = m.group(2); // the 6-digit string
+            DateResult r = tryCompact6(digits, m.start(), m.end());
+            if (r.found) return r;
+        }
+        return notFound();
+    }
+
+    /**
+     * Attempts all three compact-6 interpretations for a digit string.
+     * Returns the first that yields a valid, plausible date.
+     */
+    private static DateResult tryCompact6(String d, int start, int end) {
+        int p1 = Integer.parseInt(d.substring(0, 2));
+        int p2 = Integer.parseInt(d.substring(2, 4));
+        int p3 = Integer.parseInt(d.substring(4, 6));
+
+        // 1. DDMMYY
+        {
+            int day = p1, month = p2, year = p3;
+            year += (year < 30) ? 2000 : 1900;
+            if (year >= MIN_YEAR && year <= MAX_YEAR && isValidDate(day, month, year))
+                return make(true, day, month, year, start, end);
+        }
+        // 2. YYMMDD
+        {
+            int year = p1, month = p2, day = p3;
+            year += (year < 30) ? 2000 : 1900;
+            if (year >= MIN_YEAR && year <= MAX_YEAR && isValidDate(day, month, year))
+                return make(true, day, month, year, start, end);
+        }
+        // 3. MMDDYY
+        {
+            int month = p1, day = p2, year = p3;
+            year += (year < 30) ? 2000 : 1900;
+            if (year >= MIN_YEAR && year <= MAX_YEAR && isValidDate(day, month, year))
+                return make(true, day, month, year, start, end);
+        }
+        return notFound();
+    }
+
+    // ── Separator-based (no keyword) ──────────────────────────────────────
 
     private static DateResult findPatternSlash(String text) {
         Pattern p = Pattern.compile(PATTERN_SLASH);
         Matcher m = p.matcher(text);
-
         while (m.find()) {
             try {
-                int day = Integer.parseInt(m.group(1));
+                int day   = Integer.parseInt(m.group(1));
                 int month = Integer.parseInt(m.group(2));
-                int year = Integer.parseInt(m.group(3));
-
-                // Handle 2-digit year: 00-29 → 2000-2029, 30-99 → 1930-1999
-                if (year < 100) {
-                    year += (year < 30) ? 2000 : 1900;
-                }
-
-                // Reject implausible years for expiry dates
+                int year  = Integer.parseInt(m.group(3));
+                if (year < 100) year += (year < 30) ? 2000 : 1900;
                 if (year < MIN_YEAR || year > MAX_YEAR) continue;
-
-                // Validate date
-                if (!isValidDate(day, month, year)) {
-                    continue;
-                }
-
-                long timestamp = dateToTimestamp(day, month, year);
-                String displayText = String.format("%02d/%02d/%04d", day, month, year);
-
-                return new DateResult(true, timestamp, displayText, m.start(), m.end());
-            } catch (Exception e) {
-                // Continue searching
-            }
+                if (!isValidDate(day, month, year)) continue;
+                return make(true, day, month, year, m.start(), m.end());
+            } catch (Exception ignored) {}
         }
-
-        return new DateResult(false, 0, "", -1, -1);
+        return notFound();
     }
 
     private static DateResult findPatternDash(String text) {
         Pattern p = Pattern.compile(PATTERN_DASH);
         Matcher m = p.matcher(text);
-
         while (m.find()) {
             try {
-                int day = Integer.parseInt(m.group(1));
+                int day   = Integer.parseInt(m.group(1));
                 int month = Integer.parseInt(m.group(2));
-                int year = Integer.parseInt(m.group(3));
-
-                // Handle 2-digit year: 00-29 → 2000-2029, 30-99 → 1930-1999
-                if (year < 100) {
-                    year += (year < 30) ? 2000 : 1900;
-                }
-
-                // Reject implausible years
+                int year  = Integer.parseInt(m.group(3));
+                if (year < 100) year += (year < 30) ? 2000 : 1900;
                 if (year < MIN_YEAR || year > MAX_YEAR) continue;
-
-                if (!isValidDate(day, month, year)) {
-                    continue;
-                }
-
-                long timestamp = dateToTimestamp(day, month, year);
-                String displayText = String.format("%02d/%02d/%04d", day, month, year);
-
-                return new DateResult(true, timestamp, displayText, m.start(), m.end());
-            } catch (Exception e) {
-                // Continue searching
-            }
+                if (!isValidDate(day, month, year)) continue;
+                return make(true, day, month, year, m.start(), m.end());
+            } catch (Exception ignored) {}
         }
-
-        return new DateResult(false, 0, "", -1, -1);
+        return notFound();
     }
 
     private static DateResult findPatternISO(String text) {
         Pattern p = Pattern.compile(PATTERN_ISO);
         Matcher m = p.matcher(text);
-
         while (m.find()) {
             try {
-                int year = Integer.parseInt(m.group(1));
+                int year  = Integer.parseInt(m.group(1));
                 int month = Integer.parseInt(m.group(2));
-                int day = Integer.parseInt(m.group(3));
-
-                if (!isValidDate(day, month, year)) {
-                    continue;
-                }
-
-                long timestamp = dateToTimestamp(day, month, year);
-                String displayText = String.format("%02d/%02d/%04d", day, month, year);
-
-                return new DateResult(true, timestamp, displayText, m.start(), m.end());
-            } catch (Exception e) {
-                // Continue searching
-            }
+                int day   = Integer.parseInt(m.group(3));
+                if (!isValidDate(day, month, year)) continue;
+                return make(true, day, month, year, m.start(), m.end());
+            } catch (Exception ignored) {}
         }
-
-        return new DateResult(false, 0, "", -1, -1);
+        return notFound();
     }
 
-    /** Space-separated: DD MM YYYY (e.g. "15 03 2025") */
     private static DateResult findPatternSpace(String text) {
         Pattern p = Pattern.compile(PATTERN_SPACE);
         Matcher m = p.matcher(text);
@@ -214,65 +249,58 @@ public class DatePatternDetector {
                 int year  = Integer.parseInt(m.group(3));
                 if (year < MIN_YEAR || year > MAX_YEAR) continue;
                 if (!isValidDate(day, month, year)) continue;
-                long timestamp = dateToTimestamp(day, month, year);
-                String display = String.format("%02d/%02d/%04d", day, month, year);
-                return new DateResult(true, timestamp, display, m.start(), m.end());
+                return make(true, day, month, year, m.start(), m.end());
             } catch (Exception ignored) {}
         }
-        return new DateResult(false, 0, "", -1, -1);
+        return notFound();
     }
 
     private static DateResult findPatternMonthYear(String text) {
         Pattern p = Pattern.compile(PATTERN_MONTH_YEAR);
         Matcher m = p.matcher(text);
-
         while (m.find()) {
             try {
                 int month = Integer.parseInt(m.group(1));
                 int year  = Integer.parseInt(m.group(2));
-
                 if (month < 1 || month > 12) continue;
                 if (year < MIN_YEAR || year > MAX_YEAR) continue;
-
-                // Set day to last day of month (expiry = end of that month)
                 int day = getLastDayOfMonth(month, year);
-                long timestamp = dateToTimestamp(day, month, year);
-                String displayText = String.format("%02d/%02d/%04d", day, month, year);
-                return new DateResult(true, timestamp, displayText, m.start(), m.end());
+                return make(true, day, month, year, m.start(), m.end());
             } catch (Exception ignored) {}
         }
+        return notFound();
+    }
 
+    // ── Utility ───────────────────────────────────────────────────────────
+
+    private static DateResult make(boolean found, int day, int month, int year,
+                                   int start, int end) {
+        long ts = dateToTimestamp(day, month, year);
+        String display = String.format("%02d/%02d/%04d", day, month, year);
+        return new DateResult(found, ts, display, start, end);
+    }
+
+    private static DateResult notFound() {
         return new DateResult(false, 0, "", -1, -1);
     }
 
     private static long dateToTimestamp(int day, int month, int year) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(year, month - 1, day, 0, 0, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
+        Calendar c = Calendar.getInstance();
+        c.set(year, month - 1, day, 0, 0, 0);
+        c.set(Calendar.MILLISECOND, 0);
+        return c.getTimeInMillis();
     }
 
     private static boolean isValidDate(int day, int month, int year) {
-        if (month < 1 || month > 12) {
-            return false;
-        }
-        if (day < 1) {
-            return false;
-        }
-
-        int maxDay = getLastDayOfMonth(month, year);
-        return day <= maxDay;
+        if (month < 1 || month > 12) return false;
+        if (day < 1) return false;
+        return day <= getLastDayOfMonth(month, year);
     }
 
     private static int getLastDayOfMonth(int month, int year) {
-        int[] daysInMonth = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-
-        // Check for leap year
-        if (month == 2 && isLeapYear(year)) {
-            return 29;
-        }
-
-        return daysInMonth[month - 1];
+        int[] days = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+        if (month == 2 && isLeapYear(year)) return 29;
+        return days[month - 1];
     }
 
     private static boolean isLeapYear(int year) {

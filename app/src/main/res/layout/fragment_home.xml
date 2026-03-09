@@ -34,7 +34,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🏠 วัตถุดิบของเรา"
+                        android:text="วัตถุดิบในร้าน"
                         android:textSize="24sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary" />
@@ -76,7 +76,7 @@
                     android:layout_height="match_parent"
                     android:layout_marginHorizontal="8dp"
                     app:iconifiedByDefault="false"
-                    app:queryHint="🔍 ค้นหาวัตถุดิบ..." />
+                    app:queryHint="ค้นหาวัตถุดิบ..." />
 
             </com.google.android.material.card.MaterialCardView>
 
@@ -106,49 +106,49 @@
                         android:id="@+id/chip_meat"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🥩 เนื้อสัตว์"
+                        android:text="เนื้อสัตว์"
                         style="@style/Widget.Material3.Chip.Filter" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_vegetables"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🥬 ผักและผลไม้"
+                        android:text="ผักและผลไม้"
                         style="@style/Widget.Material3.Chip.Filter" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_dairy"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🥛 นมและไข่"
+                        android:text="นมและไข่"
                         style="@style/Widget.Material3.Chip.Filter" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_seasoning"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🧂 เครื่องปรุง"
+                        android:text="เครื่องปรุง"
                         style="@style/Widget.Material3.Chip.Filter" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_dry_goods"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🌾 ของแห้ง"
+                        android:text="ของแห้ง"
                         style="@style/Widget.Material3.Chip.Filter" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_beverages"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🥤 เครื่องดื่ม"
+                        android:text="เครื่องดื่ม"
                         style="@style/Widget.Material3.Chip.Filter" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_others"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📦 อื่นๆ"
+                        android:text="อื่นๆ"
                         style="@style/Widget.Material3.Chip.Filter" />
 
                 </com.google.android.material.chip.ChipGroup>
@@ -304,7 +304,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="📊 เรียง:"
+                    android:text="เรียง:"
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary"

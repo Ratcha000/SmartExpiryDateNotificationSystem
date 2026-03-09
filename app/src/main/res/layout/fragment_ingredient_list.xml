@@ -16,7 +16,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="8dp"
-        app:queryHint="🔍 ค้นหาวัตถุดิบ..." />
+        app:queryHint="ค้นหาวัตถุดิบ..." />
 
     <!-- Category Filter Chips -->
     <com.google.android.material.chip.ChipGroup
@@ -63,7 +63,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="📊 เรียง:"
+            android:text="เรียง:"
             android:textSize="12sp"
             android:textStyle="bold"
             android:layout_marginEnd="8dp" />

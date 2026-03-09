@@ -59,7 +59,7 @@
                 android:id="@+id/btnEditDate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="✏️ แก้ไข"
+                android:text="แก้ไข"
                 android:textSize="12sp"
                 app:cornerRadius="6dp" />
 
@@ -111,7 +111,7 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:layout_weight="1"
-            android:text="💾 บันทึก"
+            android:text="บันทึก"
             android:textSize="14sp"
             app:cornerRadius="8dp" />
 
@@ -121,7 +121,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="❌ ยกเลิก"
+            android:text="ยกเลิก"
             android:textSize="14sp"
             app:cornerRadius="8dp"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
