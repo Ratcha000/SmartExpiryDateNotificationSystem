@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:gravity="center_vertical"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- Colored dot indicator -->
+    <View
+        android:id="@+id/menuDot"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:background="@drawable/circle_shape"
+        android:layout_marginEnd="12dp" />
+
+    <!-- Menu name -->
+    <TextView
+        android:id="@+id/textMenuName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="ต้มยำกุ้ง"
+        android:textSize="14sp"
+        android:textColor="@color/text_primary" />
+
+    <!-- Chevron arrow -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="›"
+        android:textSize="18sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginStart="8dp" />
+</LinearLayout>

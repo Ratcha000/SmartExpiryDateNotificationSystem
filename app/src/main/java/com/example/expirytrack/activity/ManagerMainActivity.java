@@ -10,6 +10,9 @@ import androidx.fragment.app.FragmentManager;
 import com.example.expirytrack.LoginActivity;
 import com.example.expirytrack.R;
 import com.example.expirytrack.fragment.DashboardFragment;
+import com.example.expirytrack.fragment.HomeFragment;
+import com.example.expirytrack.fragment.ScanFragment;
+import com.example.expirytrack.fragment.SuggestionsFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
@@ -42,14 +45,29 @@ public class ManagerMainActivity extends AppCompatActivity {
 
     private void setupBottomNavigation() {
         bottomNavigation.setOnItemSelectedListener(item -> {
-            if (item.getItemId() == R.id.nav_dashboard) {
+            if (item.getItemId() == R.id.nav_home) {
+                fragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container, new HomeFragment())
+                        .addToBackStack(null)
+                        .commit();
+                return true;
+            } else if (item.getItemId() == R.id.nav_scan) {
+                fragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container, new ScanFragment())
+                        .addToBackStack(null)
+                        .commit();
+                return true;
+            } else if (item.getItemId() == R.id.nav_suggestions) {
+                fragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container, new SuggestionsFragment())
+                        .addToBackStack(null)
+                        .commit();
+                return true;
+            } else if (item.getItemId() == R.id.nav_dashboard) {
                 fragmentManager.beginTransaction()
                         .replace(R.id.fragment_container, new DashboardFragment())
                         .addToBackStack(null)
                         .commit();
-                return true;
-            } else if (item.getItemId() == R.id.nav_logout) {
-                logout();
                 return true;
             }
             return false;

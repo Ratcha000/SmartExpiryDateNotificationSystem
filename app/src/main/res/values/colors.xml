@@ -32,4 +32,11 @@
     <!-- Background Colors -->
     <color name="background_default">#FFFFFF</color>
     <color name="background_surface">#F9F9F9</color>
+    <!-- Suggestions Feature Colors -->
+    <color name="suggestion_warning_bg">#FAEEDA</color>
+    <color name="suggestion_warning_text">#854F0B</color>
+    <color name="suggestion_danger_bg">#FCEBEB</color>
+    <color name="suggestion_danger_text">#A32D2D</color>
+    <color name="suggestion_stock_bg">#EAF3DE</color>
+    <color name="suggestion_stock_text">#3B6D11</color>
 </resources>
