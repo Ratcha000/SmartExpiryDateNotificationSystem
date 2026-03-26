@@ -18,7 +18,7 @@ import com.example.expirytrack.R;
 import com.example.expirytrack.model.IngredientSuggestionGroup;
 import com.example.expirytrack.model.MenuSuggestion;
 import com.example.expirytrack.util.GeminiService;
-import com.facebook.shimmer.ShimmerFrameLayout;
+import com.example.expirytrack.util.MenuCacheManager;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.List;
@@ -33,7 +33,7 @@ public class SuggestionsAdapter extends RecyclerView.Adapter<SuggestionsAdapter.
     private static final int[] DOT_COLORS = {
             Color.parseColor("#4CAF50"), // green
             Color.parseColor("#009688"), // teal
-            Color.parseColor("#2196F3")  // blue
+            Color.parseColor("#2196F3") // blue
     };
 
     private final List<IngredientSuggestionGroup> groups;
@@ -41,17 +41,19 @@ public class SuggestionsAdapter extends RecyclerView.Adapter<SuggestionsAdapter.
     private final GeminiService geminiService;
     private final OnMenuClickListener menuClickListener;
     private final Context context;
+    private final MenuCacheManager cacheManager;
 
     public SuggestionsAdapter(Context context,
-                               List<IngredientSuggestionGroup> groups,
-                               List<String> allActiveIngredients,
-                               GeminiService geminiService,
-                               OnMenuClickListener menuClickListener) {
+            List<IngredientSuggestionGroup> groups,
+            List<String> allActiveIngredients,
+            GeminiService geminiService,
+            OnMenuClickListener menuClickListener) {
         this.context = context;
         this.groups = groups;
         this.allActiveIngredients = allActiveIngredients;
         this.geminiService = geminiService;
         this.menuClickListener = menuClickListener;
+        this.cacheManager = new MenuCacheManager(context);
     }
 
     @NonNull
@@ -80,7 +82,7 @@ public class SuggestionsAdapter extends RecyclerView.Adapter<SuggestionsAdapter.
         final TextView textExpiryDate;
         final ImageView iconChevron;
         final LinearLayout contentArea;
-        final ShimmerFrameLayout shimmerView;
+        final LinearLayout shimmerView;
         final LinearLayout errorState;
         final TextView textErrorMessage;
         final MaterialButton retryButton;
@@ -125,7 +127,8 @@ public class SuggestionsAdapter extends RecyclerView.Adapter<SuggestionsAdapter.
             // Header click
             headerRow.setOnClickListener(v -> {
                 int adapterPos = getAdapterPosition();
-                if (adapterPos == RecyclerView.NO_ID) return;
+                if (adapterPos == RecyclerView.NO_ID)
+                    return;
                 IngredientSuggestionGroup g = groups.get(adapterPos);
 
                 boolean expanding = !g.isExpanded();
@@ -165,12 +168,31 @@ public class SuggestionsAdapter extends RecyclerView.Adapter<SuggestionsAdapter.
             // Retry button
             retryButton.setOnClickListener(v -> {
                 int adapterPos = getAdapterPosition();
-                if (adapterPos == RecyclerView.NO_ID) return;
+                if (adapterPos == RecyclerView.NO_ID)
+                    return;
                 loadMenus(groups.get(adapterPos), adapterPos);
             });
         }
 
         private void loadMenus(IngredientSuggestionGroup group, int adapterPos) {
+            String ingredientName = group.getIngredientName();
+
+            // Check cache first
+            List<MenuSuggestion> cachedMenus = cacheManager.getMenusFromCache(ingredientName);
+            if (cachedMenus != null) {
+                // Use cached data
+                group.setMenus(cachedMenus);
+                group.setLoading(false);
+                group.setHasLoaded(true);
+                showShimmer(false);
+                errorState.setVisibility(View.GONE);
+                menuListContainer.setVisibility(View.VISIBLE);
+                populateMenuList(group);
+                notifyItemChanged(adapterPos);
+                return;
+            }
+
+            // Cache miss - load from API
             group.setLoading(true);
             group.setHasLoaded(false);
 
@@ -179,13 +201,15 @@ public class SuggestionsAdapter extends RecyclerView.Adapter<SuggestionsAdapter.
             menuListContainer.setVisibility(View.GONE);
 
             geminiService.getMenuSuggestions(
-                    group.getIngredientName(),
+                    ingredientName,
                     group.getDaysLeft(),
                     allActiveIngredients,
                     new GeminiService.GeminiCallback() {
                         @Override
                         public void onSuccess(List<MenuSuggestion> menus) {
                             group.setMenus(menus);
+                            // Save to cache
+                            cacheManager.saveMenusToCache(ingredientName, menus);
                             group.setLoading(false);
                             group.setHasLoaded(true);
                             notifyItemChanged(adapterPos);
@@ -214,7 +238,8 @@ public class SuggestionsAdapter extends RecyclerView.Adapter<SuggestionsAdapter.
         private void populateMenuList(IngredientSuggestionGroup group) {
             menuListContainer.removeAllViews();
             List<MenuSuggestion> menus = group.getMenus();
-            if (menus == null) return;
+            if (menus == null)
+                return;
             for (int i = 0; i < menus.size(); i++) {
                 MenuSuggestion menu = menus.get(i);
                 View rowView = LayoutInflater.from(context)
@@ -236,13 +261,7 @@ public class SuggestionsAdapter extends RecyclerView.Adapter<SuggestionsAdapter.
         }
 
         private void showShimmer(boolean show) {
-            if (show) {
-                shimmerView.setVisibility(View.VISIBLE);
-                shimmerView.startShimmer();
-            } else {
-                shimmerView.stopShimmer();
-                shimmerView.setVisibility(View.GONE);
-            }
+            shimmerView.setVisibility(show ? View.VISIBLE : View.GONE);
         }
 
         private void animateChevron(ImageView chevron, boolean expanding) {

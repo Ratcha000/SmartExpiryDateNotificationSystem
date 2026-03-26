@@ -18,6 +18,8 @@ import com.example.expirytrack.model.Ingredient;
 import com.example.expirytrack.model.IngredientSuggestionGroup;
 import com.example.expirytrack.model.MenuSuggestion;
 import com.example.expirytrack.util.GeminiService;
+import com.example.expirytrack.util.MenuCacheManager;
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -38,6 +40,7 @@ public class SuggestionsFragment extends Fragment {
     private RecyclerView recyclerSuggestions;
     private LinearLayout emptyState;
     private LinearLayout loadingState;
+    private MaterialButton btnRefreshSuggestions;
 
     private SuggestionsAdapter adapter;
     private final List<IngredientSuggestionGroup> groups = new ArrayList<>();
@@ -45,13 +48,14 @@ public class SuggestionsFragment extends Fragment {
 
     private GeminiService geminiService;
     private FirebaseFirestore db;
+    private MenuCacheManager cacheManager;
     private String restaurantId;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+            @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_suggestions, container, false);
     }
 
@@ -60,11 +64,13 @@ public class SuggestionsFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         recyclerSuggestions = view.findViewById(R.id.recyclerSuggestions);
-        emptyState          = view.findViewById(R.id.emptyState);
-        loadingState        = view.findViewById(R.id.loadingState);
+        emptyState = view.findViewById(R.id.emptyState);
+        loadingState = view.findViewById(R.id.loadingState);
+        btnRefreshSuggestions = view.findViewById(R.id.btnRefreshSuggestions);
 
-        db            = FirebaseFirestore.getInstance();
+        db = FirebaseFirestore.getInstance();
         geminiService = new GeminiService();
+        cacheManager = new MenuCacheManager(requireContext());
 
         // Set up RecyclerView with adapter
         adapter = new SuggestionsAdapter(
@@ -72,10 +78,22 @@ public class SuggestionsFragment extends Fragment {
                 groups,
                 allActiveIngredients,
                 geminiService,
-                this::onMenuSelected
-        );
+                this::onMenuSelected);
         recyclerSuggestions.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerSuggestions.setAdapter(adapter);
+
+        // Refresh button: clear cache and reload
+        btnRefreshSuggestions.setOnClickListener(v -> {
+            cacheManager.clearAllMenuCache();
+            // Clear group data and reload
+            for (IngredientSuggestionGroup group : groups) {
+                group.setExpanded(false);
+                group.setMenus(null);
+                group.setHasLoaded(false);
+                group.setLoading(false);
+            }
+            adapter.notifyDataSetChanged();
+        });
 
         showLoading(true);
 
@@ -90,7 +108,8 @@ public class SuggestionsFragment extends Fragment {
         db.collection("users").document(currentUser.getUid())
                 .get()
                 .addOnSuccessListener(userDoc -> {
-                    if (!isAdded()) return;
+                    if (!isAdded())
+                        return;
                     restaurantId = userDoc.getString("restaurantId");
                     if (restaurantId == null || restaurantId.isEmpty()) {
                         showLoading(false);
@@ -100,7 +119,8 @@ public class SuggestionsFragment extends Fragment {
                     loadIngredients();
                 })
                 .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
+                    if (!isAdded())
+                        return;
                     showLoading(false);
                     showEmpty(true);
                 });
@@ -116,25 +136,27 @@ public class SuggestionsFragment extends Fragment {
                 .whereEqualTo("status", "active")
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
-                    if (!isAdded()) return;
+                    if (!isAdded())
+                        return;
 
                     long nowMs = System.currentTimeMillis();
-                    SimpleDateFormat sdf =
-                            new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
 
                     List<IngredientSuggestionGroup> nearExpiry = new ArrayList<>();
                     allActiveIngredients.clear();
 
                     for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
                         Ingredient ing = doc.toObject(Ingredient.class);
-                        if (ing == null) continue;
-                        if (ing.getName() == null || ing.getName().isEmpty()) continue;
+                        if (ing == null)
+                            continue;
+                        if (ing.getName() == null || ing.getName().isEmpty())
+                            continue;
 
                         allActiveIngredients.add(ing.getName());
 
                         long expiryMs = ing.getExpiryDate();
-                        long diffMs   = expiryMs - nowMs;
-                        int daysLeft  = (int) TimeUnit.MILLISECONDS.toDays(diffMs);
+                        long diffMs = expiryMs - nowMs;
+                        int daysLeft = (int) TimeUnit.MILLISECONDS.toDays(diffMs);
 
                         int threshold = ing.getNotifyDaysBefore() > 0
                                 ? ing.getNotifyDaysBefore()
@@ -159,7 +181,8 @@ public class SuggestionsFragment extends Fragment {
                     showEmpty(groups.isEmpty());
                 })
                 .addOnFailureListener(e -> {
-                    if (!isAdded()) return;
+                    if (!isAdded())
+                        return;
                     showLoading(false);
                     showEmpty(true);
                 });
@@ -170,8 +193,7 @@ public class SuggestionsFragment extends Fragment {
     // -------------------------------------------------------------------------
 
     private void onMenuSelected(MenuSuggestion menu, String ingredientName, int daysLeft) {
-        MenuDetailBottomSheet sheet =
-                MenuDetailBottomSheet.newInstance(menu, ingredientName, daysLeft);
+        MenuDetailBottomSheet sheet = MenuDetailBottomSheet.newInstance(menu, ingredientName, daysLeft);
         sheet.show(getParentFragmentManager(), "MenuDetail");
     }
 

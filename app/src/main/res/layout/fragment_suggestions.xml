@@ -19,21 +19,45 @@
             android:paddingBottom="8dp"
             android:background="@color/white">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="💡 แนะนำเมนูจาก AI"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="เมนูจากวัตถุดิบที่ใกล้หมดอายุ ไม่ให้เสียของ"
-                android:textSize="13sp"
-                android:textColor="@color/text_secondary"
-                android:layout_marginTop="2dp" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="แนะนำเมนูจาก AI"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="เมนูจากวัตถุดิบที่ใกล้หมดอายุ ไม่ให้เสียของ"
+                        android:textSize="13sp"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRefreshSuggestions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="รีเฟรช"
+                    android:textSize="12sp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Divider -->
@@ -104,17 +128,21 @@
                 android:gravity="center"
                 android:visibility="gone">
 
-                <ProgressBar
-                    android:layout_width="48dp"
-                    android:layout_height="48dp" />
+                <com.airbnb.lottie.LottieAnimationView
+                    android:id="@+id/lottieLoading"
+                    android:layout_width="220dp"
+                    android:layout_height="220dp"
+                    app:lottie_rawRes="@raw/food_loading"
+                    app:lottie_autoPlay="true"
+                    app:lottie_loop="true" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="กำลังโหลด..."
+                    android:text="AI กำลังวิเคราะห์วัตถุดิบ..."
                     android:textSize="14sp"
                     android:textColor="@color/text_secondary"
-                    android:layout_marginTop="12dp" />
+                    android:layout_marginTop="4dp" />
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>
